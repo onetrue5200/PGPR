@@ -40,41 +40,16 @@ class KnowledgeGraph(object):
         print('Total {:d} nodes.'.format(num_nodes))
 
     def _load_reviews(self, dataset, word_tfidf_threshold=0.1, word_freq_threshold=5000):
-        print('Load reviews...')
-        # (1) Filter words by both tfidf and frequency.
-        vocab = dataset.word.vocab
-        reviews = [d[2] for d in dataset.review.data]
-        review_tfidf = compute_tfidf_fast(vocab, reviews)
-        distrib = dataset.review.word_distrib
-
+        print('Load studys...')
         num_edges = 0
-        all_removed_words = []
-        for rid, data in enumerate(dataset.review.data):
-            uid, pid, review = data
-            doc_tfidf = review_tfidf[rid].toarray()[0]
-            remained_words = [wid for wid in set(review)
-                              if doc_tfidf[wid] >= word_tfidf_threshold
-                              and distrib[wid] <= word_freq_threshold]
-            removed_words = set(review).difference(remained_words)  # only for visualize
-            removed_words = [vocab[wid] for wid in removed_words]
-            all_removed_words.append(removed_words)
-            if len(remained_words) <= 0:
-                continue
-
-            # (2) Add edges.
-            self._add_edge(USER, uid, PURCHASE, PRODUCT, pid)
+        for _, data in enumerate(dataset.review.data):
+            uid, pid = data
+            self._add_edge(STUDENT, uid, STUDY, RESOURCE, pid)
             num_edges += 2
-            for wid in remained_words:
-                self._add_edge(USER, uid, MENTION, WORD, wid)
-                self._add_edge(PRODUCT, pid, DESCRIBED_AS, WORD, wid)
-                num_edges += 4
-        print('Total {:d} review edges.'.format(num_edges))
-
-        with open('./tmp/review_removed_words.txt', 'w') as f:
-            f.writelines([' '.join(words) + '\n' for words in all_removed_words])
+        print('Total {:d} study edges.'.format(num_edges))
 
     def _load_knowledge(self, dataset):
-        for relation in [PRODUCED_BY, BELONG_TO, ALSO_BOUGHT, ALSO_VIEWED, BOUGHT_TOGETHER]:
+        for relation in [BELONG, MATCHED]:
             print('Load knowledge {}...'.format(relation))
             data = getattr(dataset, relation).data
             num_edges = 0
@@ -82,8 +57,8 @@ class KnowledgeGraph(object):
                 if len(eids) <= 0:
                     continue
                 for eid in set(eids):
-                    et_type = get_entity_tail(PRODUCT, relation)
-                    self._add_edge(PRODUCT, pid, relation, et_type, eid)
+                    et_type = get_entity_tail(RESOURCE, relation)
+                    self._add_edge(RESOURCE, pid, relation, et_type, eid)
                     num_edges += 2
             print('Total {:d} {:s} edges.'.format(num_edges, relation))
 

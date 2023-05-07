@@ -11,11 +11,11 @@ from knowledge_graph import KnowledgeGraph
 
 
 def generate_labels(dataset, mode='train'):
-    review_file = '{}/{}.txt.gz'.format(DATASET_DIR[dataset], mode)
+    review_file = '{}/{}.txt'.format(DATASET_DIR[dataset], mode)
     user_products = {}  # {uid: [pid,...], ...}
-    with gzip.open(review_file, 'r') as f:
-        for line in f:
-            line = line.decode('utf-8').strip()
+    with open(review_file, 'r') as f:
+        for line in f.readlines():
+            line = line.strip()
             arr = line.split('\t')
             user_idx = int(arr[0])
             product_idx = int(arr[1])
@@ -27,7 +27,7 @@ def generate_labels(dataset, mode='train'):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset', type=str, default=BEAUTY, help='One of {BEAUTY, CELL, CD, CLOTH}.')
+    parser.add_argument('--dataset', type=str, default=SS, help='One of {BEAUTY, CELL, CD, CLOTH, SS}.')
     args = parser.parse_args()
 
     # Create AmazonDataset instance for dataset.

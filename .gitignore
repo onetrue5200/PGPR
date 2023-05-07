@@ -3,6 +3,7 @@
 .*.swp
 .idea/
 tmp/
+data/Shuishan/
 .DS_Store
 *.pkl
 tags

@@ -12,100 +12,66 @@ import torch
 
 
 # Dataset names.
-BEAUTY = 'beauty'
-CELL = 'cell'
-CLOTH = 'cloth'
-CD = 'cd'
+SS = 'shuishan'
 
 # Dataset directories.
 DATASET_DIR = {
-    BEAUTY: './data/Amazon_Beauty',
-    CELL: './data/Amazon_Cellphones',
-    CLOTH: './data/Amazon_Clothing',
-    CD: './data/Amazon_CDs',
+    SS: './data/Shuishan',
 }
 
 # Model result directories.
 TMP_DIR = {
-    BEAUTY: './tmp/Amazon_Beauty',
-    CELL: './tmp/Amazon_Cellphones',
-    CLOTH: './tmp/Amazon_Clothing',
-    CD: './tmp/Amazon_CDs',
+    SS: './tmp/Shuishan',
 }
 
 # Label files.
 LABELS = {
-    BEAUTY: (TMP_DIR[BEAUTY] + '/train_label.pkl', TMP_DIR[BEAUTY] + '/test_label.pkl'),
-    CLOTH: (TMP_DIR[CLOTH] + '/train_label.pkl', TMP_DIR[CLOTH] + '/test_label.pkl'),
-    CELL: (TMP_DIR[CELL] + '/train_label.pkl', TMP_DIR[CELL] + '/test_label.pkl'),
-    CD: (TMP_DIR[CD] + '/train_label.pkl', TMP_DIR[CD] + '/test_label.pkl')
+    SS: (TMP_DIR[SS] + '/train_label.pkl', TMP_DIR[SS] + '/test_label.pkl'),
 }
 
-
 # Entities
-USER = 'user'
-PRODUCT = 'product'
-WORD = 'word'
-RPRODUCT = 'related_product'
-BRAND = 'brand'
-CATEGORY = 'category'
+STUDENT = 'students'
+RESOURCE = 'resources'
+COURSE = 'courses'
+QUESTION = 'questions'
 
 
 # Relations
-PURCHASE = 'purchase'
-MENTION = 'mentions'
-DESCRIBED_AS = 'described_as'
-PRODUCED_BY = 'produced_by'
-BELONG_TO = 'belongs_to'
-ALSO_BOUGHT = 'also_bought'
-ALSO_VIEWED = 'also_viewed'
-BOUGHT_TOGETHER = 'bought_together'
+STUDY = 'study'
+BELONG = 'belong'
+MATCHED = 'matched'
 SELF_LOOP = 'self_loop'  # only for kg env
 
 KG_RELATION = {
-    USER: {
-        PURCHASE: PRODUCT,
-        MENTION: WORD,
+    STUDENT: {
+        STUDY: RESOURCE,
     },
-    WORD: {
-        MENTION: USER,
-        DESCRIBED_AS: PRODUCT,
+    RESOURCE: {
+        BELONG: COURSE,
+        MATCHED: QUESTION,
+        STUDY: STUDENT,
     },
-    PRODUCT: {
-        PURCHASE: USER,
-        DESCRIBED_AS: WORD,
-        PRODUCED_BY: BRAND,
-        BELONG_TO: CATEGORY,
-        ALSO_BOUGHT: RPRODUCT,
-        ALSO_VIEWED: RPRODUCT,
-        BOUGHT_TOGETHER: RPRODUCT,
+    COURSE: {
+        BELONG: RESOURCE,
     },
-    BRAND: {
-        PRODUCED_BY: PRODUCT,
+    QUESTION: {
+        MATCHED: RESOURCE,
     },
-    CATEGORY: {
-        BELONG_TO: PRODUCT,
-    },
-    RPRODUCT: {
-        ALSO_BOUGHT: PRODUCT,
-        ALSO_VIEWED: PRODUCT,
-        BOUGHT_TOGETHER: PRODUCT,
-    }
 }
 
 
 PATH_PATTERN = {
     # length = 3
-    1: ((None, USER), (MENTION, WORD), (DESCRIBED_AS, PRODUCT)),
+    # 1: ((None, USER), (MENTION, WORD), (DESCRIBED_AS, PRODUCT)),
     # length = 4
-    11: ((None, USER), (PURCHASE, PRODUCT), (PURCHASE, USER), (PURCHASE, PRODUCT)),
-    12: ((None, USER), (PURCHASE, PRODUCT), (DESCRIBED_AS, WORD), (DESCRIBED_AS, PRODUCT)),
-    13: ((None, USER), (PURCHASE, PRODUCT), (PRODUCED_BY, BRAND), (PRODUCED_BY, PRODUCT)),
-    14: ((None, USER), (PURCHASE, PRODUCT), (BELONG_TO, CATEGORY), (BELONG_TO, PRODUCT)),
-    15: ((None, USER), (PURCHASE, PRODUCT), (ALSO_BOUGHT, RPRODUCT), (ALSO_BOUGHT, PRODUCT)),
-    16: ((None, USER), (PURCHASE, PRODUCT), (ALSO_VIEWED, RPRODUCT), (ALSO_VIEWED, PRODUCT)),
-    17: ((None, USER), (PURCHASE, PRODUCT), (BOUGHT_TOGETHER, RPRODUCT), (BOUGHT_TOGETHER, PRODUCT)),
-    18: ((None, USER), (MENTION, WORD), (MENTION, USER), (PURCHASE, PRODUCT)),
+    # 11: ((None, USER), (PURCHASE, PRODUCT), (PURCHASE, USER), (PURCHASE, PRODUCT)),
+    # 12: ((None, USER), (PURCHASE, PRODUCT), (DESCRIBED_AS, WORD), (DESCRIBED_AS, PRODUCT)),
+    # 13: ((None, USER), (PURCHASE, PRODUCT), (PRODUCED_BY, BRAND), (PRODUCED_BY, PRODUCT)),
+    # 14: ((None, USER), (PURCHASE, PRODUCT), (BELONG_TO, CATEGORY), (BELONG_TO, PRODUCT)),
+    # 15: ((None, USER), (PURCHASE, PRODUCT), (ALSO_BOUGHT, RPRODUCT), (ALSO_BOUGHT, PRODUCT)),
+    # 16: ((None, USER), (PURCHASE, PRODUCT), (ALSO_VIEWED, RPRODUCT), (ALSO_VIEWED, PRODUCT)),
+    # 17: ((None, USER), (PURCHASE, PRODUCT), (BOUGHT_TOGETHER, RPRODUCT), (BOUGHT_TOGETHER, PRODUCT)),
+    # 18: ((None, USER), (MENTION, WORD), (MENTION, USER), (PURCHASE, PRODUCT)),
 }
 
 

@@ -15,36 +15,27 @@ class AmazonDataset(object):
         self.data_dir = data_dir
         if not self.data_dir.endswith('/'):
             self.data_dir += '/'
-        self.review_file = set_name + '.txt.gz'
+        self.review_file = set_name + '.txt'
         self.load_entities()
         self.load_product_relations()
         self.load_reviews()
-        self.create_word_sampling_rate(word_sampling_rate)
+        # self.create_word_sampling_rate(word_sampling_rate)
 
     def _load_file(self, filename):
-        with gzip.open(self.data_dir + filename, 'r') as f:
-            # In Python 3, must use decode() to convert bytes to string!
-            return [line.decode('utf-8').strip() for line in f]
+        with open(self.data_dir + filename, 'r') as f:
+            return [line.strip() for line in f.readlines()]
 
     def load_entities(self):
-        """Load 6 global entities from data files:
-        `user`, `product`, `word`, `related_product`, `brand`, `category`.
-        Create a member variable for each entity associated with attributes:
-        - `vocab`: a list of string indicating entity values.
-        - `vocab_size`: vocabulary size.
-        """
         entity_files = edict(
-                user='users.txt.gz',
-                product='product.txt.gz',
-                word='vocab.txt.gz',
-                related_product='related_product.txt.gz',
-                brand='brand.txt.gz',
-                category='category.txt.gz',
+                students='students.txt',
+                resources='resources.txt',
+                courses='courses.txt',
+                questions='questions.txt',
         )
         for name in entity_files:
             vocab = self._load_file(entity_files[name])
             setattr(self, name, edict(vocab=vocab, vocab_size=len(vocab)))
-            print('Load', name, 'of size', len(vocab))
+            print('Load entity', name, 'of size', len(vocab))
 
     def load_reviews(self):
         """Load user-product reviews from train/test data files.
@@ -58,29 +49,21 @@ class AmazonDataset(object):
         - `review_distrib`: always 1.
         """
         review_data = []  # (user_idx, product_idx, [word1_idx,...,wordn_idx])
-        product_distrib = np.zeros(self.product.vocab_size)
-        word_distrib = np.zeros(self.word.vocab_size)
-        word_count = 0
+        product_distrib = np.zeros(self.resources.vocab_size)
         for line in self._load_file(self.review_file):
             arr = line.split('\t')
             user_idx = int(arr[0])
             product_idx = int(arr[1])
-            word_indices = [int(i) for i in arr[2].split(' ')]  # list of word idx
-            review_data.append((user_idx, product_idx, word_indices))
+            review_data.append((user_idx, product_idx))
             product_distrib[product_idx] += 1
-            for wi in word_indices:
-                word_distrib[wi] += 1
-            word_count += len(word_indices)
         self.review = edict(
                 data=review_data,
                 size=len(review_data),
                 product_distrib=product_distrib,
-                product_uniform_distrib=np.ones(self.product.vocab_size),
-                word_distrib=word_distrib,
-                word_count=word_count,
+                product_uniform_distrib=np.ones(self.resources.vocab_size),
                 review_distrib=np.ones(len(review_data)) #set to 1 now
         )
-        print('Load review of size', self.review.size, 'word count=', word_count)
+        print('Load review of size', self.review.size)
 
     def load_product_relations(self):
         """Load 5 product -> ? relations:
@@ -95,32 +78,21 @@ class AmazonDataset(object):
         - `et_distrib`: frequency of entity_tail vocab.
         """
         product_relations = edict(
-                produced_by=('brand_p_b.txt.gz', self.brand),  # (filename, entity_tail)
-                belongs_to=('category_p_c.txt.gz', self.category),
-                also_bought=('also_bought_p_p.txt.gz', self.related_product),
-                also_viewed=('also_viewed_p_p.txt.gz', self.related_product),
-                bought_together=('bought_together_p_p.txt.gz', self.related_product),
+                belong=('belong.txt', self.courses),  # (filename, entity_tail)
+                matched=('matched.txt', self.questions),
         )
         for name in product_relations:
-            # We save information of entity_tail (et) in each relation.
-            # Note that `data` variable saves list of entity_tail indices.
-            # The i-th record of `data` variable is the entity_tail idx (i.e. product_idx=i).
-            # So for each product-relation, there are always |products| records.
             relation = edict(
-                    data=[],
-                    et_vocab=product_relations[name][1].vocab, #copy of brand, catgory ... 's vocab 
-                    et_distrib=np.zeros(product_relations[name][1].vocab_size) #[1] means self.brand ..
+                    data=[[] for _ in range(self.resources.vocab_size)],
+                    et_vocab=product_relations[name][1].vocab,
+                    et_distrib=np.zeros(product_relations[name][1].vocab_size)
             )
-            for line in self._load_file(product_relations[name][0]): #[0] means brand_p_b.txt.gz ..
-                knowledge = []
-                for x in line.split(' '):  # some lines may be empty
-                    if len(x) > 0:
-                        x = int(x)
-                        knowledge.append(x)
-                        relation.et_distrib[x] += 1
-                relation.data.append(knowledge)
+            for line in self._load_file(product_relations[name][0]):
+                head, tail = line.split('\t')
+                relation.data[int(head)].append(int(tail))
+                relation.et_distrib[int(tail)] += 1
             setattr(self, name, relation)
-            print('Load', name, 'of size', len(relation.data))
+            print('Load relation', name, 'of size', len(relation.data))
 
     def create_word_sampling_rate(self, sampling_threshold):
         print('Create word sampling rate')
