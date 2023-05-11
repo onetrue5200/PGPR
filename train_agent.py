@@ -53,6 +53,7 @@ class ActorCritic(nn.Module):
     def select_action(self, batch_state, batch_act_mask, device):
         state = torch.FloatTensor(batch_state).to(device)  # Tensor [bs, state_dim]
         act_mask = torch.ByteTensor(batch_act_mask).to(device)  # Tensor of [bs, act_dim]
+        # act_mask.dtype=torch.bool
 
         probs, value = self((state, act_mask))  # act_probs: [bs, act_dim], state_value: [bs, 1]
         m = Categorical(probs)
@@ -130,7 +131,7 @@ class ACDataLoader(object):
 
 def train(args):
     env = BatchKGEnvironment(args.dataset, args.max_acts, max_path_len=args.max_path_len, state_history=args.state_history)
-    uids = list(env.kg(USER).keys())
+    uids = list(env.kg(STUDENT).keys())
     dataloader = ACDataLoader(uids, args.batch_size)
     model = ActorCritic(env.state_dim, env.act_dim, gamma=args.gamma, hidden_sizes=args.hidden).to(args.device)
     logger.info('Parameters:' + str([i[0] for i in model.named_parameters()]))
@@ -191,7 +192,7 @@ def train(args):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset', type=str, default=BEAUTY, help='One of {clothing, cell, beauty, cd}')
+    parser.add_argument('--dataset', type=str, default=SS, help='One of {clothing, cell, beauty, cd}')
     parser.add_argument('--name', type=str, default='train_agent', help='directory name.')
     parser.add_argument('--seed', type=int, default=123, help='random seed.')
     parser.add_argument('--gpu', type=str, default='0', help='gpu device.')
