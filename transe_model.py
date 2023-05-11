@@ -21,12 +21,10 @@ class KnowledgeEmbedding(nn.Module):
 
         # Initialize entity embeddings.
         self.entities = edict(
-            user=edict(vocab_size=dataset.user.vocab_size),
-            product=edict(vocab_size=dataset.product.vocab_size),
-            word=edict(vocab_size=dataset.word.vocab_size),
-            related_product=edict(vocab_size=dataset.related_product.vocab_size),
-            brand=edict(vocab_size=dataset.brand.vocab_size),
-            category=edict(vocab_size=dataset.category.vocab_size),
+            student=edict(vocab_size=dataset.students.vocab_size),
+            resource=edict(vocab_size=dataset.resources.vocab_size),
+            course=edict(vocab_size=dataset.courses.vocab_size),
+            question=edict(vocab_size=dataset.questions.vocab_size),
         )
         for e in self.entities:
             embed = self._entity_embedding(self.entities[e].vocab_size)
@@ -34,30 +32,15 @@ class KnowledgeEmbedding(nn.Module):
 
         # Initialize relation embeddings and relation biases.
         self.relations = edict(
-            purchase=edict(
-                et='product',
+            study=edict(
+                et='resources',
                 et_distrib=self._make_distrib(dataset.review.product_uniform_distrib)),
-            mentions=edict(
-                et='word',
-                et_distrib=self._make_distrib(dataset.review.word_distrib)),
-            describe_as=edict(
-                et='word',
-                et_distrib=self._make_distrib(dataset.review.word_distrib)),
-            produced_by=edict(
-                et='brand',
-                et_distrib=self._make_distrib(dataset.produced_by.et_distrib)),
-            belongs_to=edict(
-                et='category',
-                et_distrib=self._make_distrib(dataset.belongs_to.et_distrib)),
-            also_bought=edict(
-                et='related_product',
-                et_distrib=self._make_distrib(dataset.also_bought.et_distrib)),
-            also_viewed=edict(
-                et='related_product',
-                et_distrib=self._make_distrib(dataset.also_viewed.et_distrib)),
-            bought_together=edict(
-                et='related_product',
-                et_distrib=self._make_distrib(dataset.bought_together.et_distrib)),
+            belong=edict(
+                et='courses',
+                et_distrib=self._make_distrib(dataset.belong.et_distrib)),
+            matched=edict(
+                et='questions',
+                et_distrib=self._make_distrib(dataset.matched.et_distrib)),
         )
         for r in self.relations:
             embed = self._relation_embedding()
@@ -104,61 +87,27 @@ class KnowledgeEmbedding(nn.Module):
         batch_idxs: batch_size * 8 array, where each row is
                 (u_id, p_id, w_id, b_id, c_id, rp_id, rp_id, rp_id).
         """
-        user_idxs = batch_idxs[:, 0]
-        product_idxs = batch_idxs[:, 1]
-        word_idxs = batch_idxs[:, 2]
-        brand_idxs = batch_idxs[:, 3]
-        category_idxs = batch_idxs[:, 4]
-        rproduct1_idxs = batch_idxs[:, 5]
-        rproduct2_idxs = batch_idxs[:, 6]
-        rproduct3_idxs = batch_idxs[:, 7]
+        student_idxs = batch_idxs[:, 0]
+        resource_idxs = batch_idxs[:, 1]
+        course_idxs = batch_idxs[:, 2]
+        question_idxs = batch_idxs[:, 3]
 
         regularizations = []
 
-        # user + purchase -> product
-        up_loss, up_embeds = self.neg_loss('user', 'purchase', 'product', user_idxs, product_idxs)
-        regularizations.extend(up_embeds)
-        loss = up_loss
+        sr_loss, up_embeds = self.neg_loss('student', 'study', 'resource', student_idxs, resource_idxs)
+        if sr_loss is not None:
+            regularizations.extend(up_embeds)
+            loss = sr_loss
 
-        # user + mentions -> word
-        uw_loss, uw_embeds = self.neg_loss('user', 'mentions', 'word', user_idxs, word_idxs)
-        regularizations.extend(uw_embeds)
-        loss += uw_loss
+        rc_loss, pw_embeds = self.neg_loss('resource', 'belong', 'course', resource_idxs, course_idxs)
+        if rc_loss is not None:
+            regularizations.extend(pw_embeds)
+            loss += rc_loss
 
-        # product + describe_as -> word
-        pw_loss, pw_embeds = self.neg_loss('product', 'describe_as', 'word', product_idxs, word_idxs)
-        regularizations.extend(pw_embeds)
-        loss += pw_loss
-
-        # product + produced_by -> brand
-        pb_loss, pb_embeds = self.neg_loss('product', 'produced_by', 'brand', product_idxs, brand_idxs)
-        if pb_loss is not None:
+        rq_loss, pb_embeds = self.neg_loss('resource', 'matched', 'question', resource_idxs, question_idxs)
+        if rq_loss is not None:
             regularizations.extend(pb_embeds)
-            loss += pb_loss
-
-        # product + belongs_to -> category
-        pc_loss, pc_embeds = self.neg_loss('product', 'belongs_to', 'category', product_idxs, category_idxs)
-        if pc_loss is not None:
-            regularizations.extend(pc_embeds)
-            loss += pc_loss
-
-        # product + also_bought -> related_product1
-        pr1_loss, pr1_embeds = self.neg_loss('product', 'also_bought', 'related_product', product_idxs, rproduct1_idxs)
-        if pr1_loss is not None:
-            regularizations.extend(pr1_embeds)
-            loss += pr1_loss
-
-        # product + also_viewed -> related_product2
-        pr2_loss, pr2_embeds = self.neg_loss('product', 'also_viewed', 'related_product', product_idxs, rproduct2_idxs)
-        if pr2_loss is not None:
-            regularizations.extend(pr2_embeds)
-            loss += pr2_loss
-
-        # product + bought_together -> related_product3
-        pr3_loss, pr3_embeds = self.neg_loss('product', 'bought_together', 'related_product', product_idxs, rproduct3_idxs)
-        if pr3_loss is not None:
-            regularizations.extend(pr3_embeds)
-            loss += pr3_loss
+            loss += rq_loss
 
         # l2 regularization
         if self.l2_lambda > 0:

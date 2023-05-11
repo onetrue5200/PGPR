@@ -6,6 +6,7 @@ import gzip
 import pickle
 from easydict import EasyDict as edict
 import random
+from utils import *
 
 
 class AmazonDataset(object):
@@ -113,7 +114,7 @@ class AmazonDataLoader(object):
         self.dataset = dataset
         self.batch_size = batch_size
         self.review_size = self.dataset.review.size
-        self.product_relations = ['produced_by', 'belongs_to', 'also_bought', 'also_viewed', 'bought_together']
+        self.product_relations = [BELONG, MATCHED]
         self.finished_word_num = 0
         self.reset()
 
@@ -130,33 +131,30 @@ class AmazonDataLoader(object):
         """
         batch = []
         review_idx = self.review_seq[self.cur_review_i]
-        user_idx, product_idx, text_list = self.dataset.review.data[review_idx]
+        user_idx, product_idx = self.dataset.review.data[review_idx]
         product_knowledge = {pr: getattr(self.dataset, pr).data[product_idx] for pr in self.product_relations}
 
         while len(batch) < self.batch_size:
             # 1) Sample the word
-            word_idx = text_list[self.cur_word_i]
-            if random.random() < self.dataset.word_sampling_rate[word_idx]:
-                data = [user_idx, product_idx, word_idx]
-                for pr in self.product_relations:
-                    if len(product_knowledge[pr]) <= 0:
-                        data.append(-1)
-                    else:
-                        data.append(random.choice(product_knowledge[pr]))
-                batch.append(data)
+            data = [user_idx, product_idx]
+            for pr in self.product_relations:
+                if len(product_knowledge[pr]) <= 0:
+                    data.append(-1)
+                else:
+                    data.append(random.choice(product_knowledge[pr]))
+            batch.append(data)
 
             # 2) Move to next word/review
             self.cur_word_i += 1
             self.finished_word_num += 1
-            if self.cur_word_i >= len(text_list):
-                self.cur_review_i += 1
-                if self.cur_review_i >= self.review_size:
-                    self._has_next = False
-                    break
-                self.cur_word_i = 0
-                review_idx = self.review_seq[self.cur_review_i]
-                user_idx, product_idx, text_list = self.dataset.review.data[review_idx]
-                product_knowledge = {pr: getattr(self.dataset, pr).data[product_idx] for pr in self.product_relations}
+            self.cur_review_i += 1
+            if self.cur_review_i >= self.review_size:
+                self._has_next = False
+                break
+            self.cur_word_i = 0
+            review_idx = self.review_seq[self.cur_review_i]
+            user_idx, product_idx = self.dataset.review.data[review_idx]
+            product_knowledge = {pr: getattr(self.dataset, pr).data[product_idx] for pr in self.product_relations}
 
         return np.array(batch)
 

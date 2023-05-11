@@ -20,7 +20,6 @@ logger = None
 def train(args):
     dataset = load_dataset(args.dataset)
     dataloader = AmazonDataLoader(dataset, args.batch_size)
-    words_to_train = args.epochs * dataset.review.word_count + 1
 
     model = KnowledgeEmbedding(dataset, args).to(args.device)
     logger.info('Parameters:' + str([i[0] for i in model.named_parameters()]))
@@ -32,7 +31,7 @@ def train(args):
         dataloader.reset()
         while dataloader.has_next():
             # Set learning rate.
-            lr = args.lr * max(1e-4, 1.0 - dataloader.finished_word_num / float(words_to_train))
+            lr = args.lr * 1e-4
             for pg in optimizer.param_groups:
                 pg['lr'] = lr
 
@@ -51,7 +50,6 @@ def train(args):
             steps += 1
             if steps % args.steps_per_checkpoint == 0:
                 logger.info('Epoch: {:02d} | '.format(epoch) +
-                            'Words: {:d}/{:d} | '.format(dataloader.finished_word_num, words_to_train) +
                             'Lr: {:.5f} | '.format(lr) +
                             'Smooth loss: {:.5f}'.format(smooth_loss))
                 smooth_loss = 0.0
@@ -65,44 +63,22 @@ def extract_embeddings(args):
     print('Load embeddings', model_file)
     state_dict = torch.load(model_file, map_location=lambda storage, loc: storage)
     embeds = {
-        USER: state_dict['user.weight'].cpu().data.numpy()[:-1],  # Must remove last dummy 'user' with 0 embed.
-        PRODUCT: state_dict['product.weight'].cpu().data.numpy()[:-1],
-        WORD: state_dict['word.weight'].cpu().data.numpy()[:-1],
-        BRAND: state_dict['brand.weight'].cpu().data.numpy()[:-1],
-        CATEGORY: state_dict['category.weight'].cpu().data.numpy()[:-1],
-        RPRODUCT: state_dict['related_product.weight'].cpu().data.numpy()[:-1],
+        STUDENT: state_dict['student.weight'].cpu().data.numpy()[:-1],  # Must remove last dummy 'user' with 0 embed.
+        RESOURCE: state_dict['resource.weight'].cpu().data.numpy()[:-1],
+        COURSE: state_dict['course.weight'].cpu().data.numpy()[:-1],
+        QUESTION: state_dict['question.weight'].cpu().data.numpy()[:-1],
 
-        PURCHASE: (
-            state_dict['purchase'].cpu().data.numpy()[0],
-            state_dict['purchase_bias.weight'].cpu().data.numpy()
+        STUDY: (
+            state_dict['study'].cpu().data.numpy()[0],
+            state_dict['study_bias.weight'].cpu().data.numpy()
         ),
-        MENTION: (
-            state_dict['mentions'].cpu().data.numpy()[0],
-            state_dict['mentions_bias.weight'].cpu().data.numpy()
+        BELONG: (
+            state_dict['belong'].cpu().data.numpy()[0],
+            state_dict['belong_bias.weight'].cpu().data.numpy()
         ),
-        DESCRIBED_AS: (
-            state_dict['describe_as'].cpu().data.numpy()[0],
-            state_dict['describe_as_bias.weight'].cpu().data.numpy()
-        ),
-        PRODUCED_BY: (
-            state_dict['produced_by'].cpu().data.numpy()[0],
-            state_dict['produced_by_bias.weight'].cpu().data.numpy()
-        ),
-        BELONG_TO: (
-            state_dict['belongs_to'].cpu().data.numpy()[0],
-            state_dict['belongs_to_bias.weight'].cpu().data.numpy()
-        ),
-        ALSO_BOUGHT: (
-            state_dict['also_bought'].cpu().data.numpy()[0],
-            state_dict['also_bought_bias.weight'].cpu().data.numpy()
-        ),
-        ALSO_VIEWED: (
-            state_dict['also_viewed'].cpu().data.numpy()[0],
-            state_dict['also_viewed_bias.weight'].cpu().data.numpy()
-        ),
-        BOUGHT_TOGETHER: (
-            state_dict['bought_together'].cpu().data.numpy()[0],
-            state_dict['bought_together_bias.weight'].cpu().data.numpy()
+        MATCHED: (
+            state_dict['matched'].cpu().data.numpy()[0],
+            state_dict['matched_bias.weight'].cpu().data.numpy()
         ),
     }
     save_embed(args.dataset, embeds)
@@ -110,7 +86,7 @@ def extract_embeddings(args):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset', type=str, default=BEAUTY, help='One of {beauty, cd, cell, clothing}.')
+    parser.add_argument('--dataset', type=str, default=SS, help='One of {beauty, cd, cell, clothing}.')
     parser.add_argument('--name', type=str, default='train_transe_model', help='model name.')
     parser.add_argument('--seed', type=int, default=123, help='random seed.')
     parser.add_argument('--gpu', type=str, default='1', help='gpu device.')
